@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>二八法则 · 点阵动画</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#05060A}
+  body{
+    font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- 9:16 画布，等比缩放铺满窗口 ---------- */
+  .stage{
+    position:absolute; left:50%; top:50%;
+    width:1080px; height:1920px;
+    transform:translate(-50%,-50%) scale(var(--s,1));
+    transform-origin:center center;
+    padding:96px 80px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 70% at 50% -10%, #161B26 0%, #0B0E14 52%, #06070B 100%);
+  }
+  /* 顶部极细高光，让深色背景不死 */
+  .stage::before{
+    content:""; position:absolute; left:0; right:0; top:0; height:2px;
+    background:linear-gradient(90deg,transparent,rgba(255,207,92,.35),transparent);
+  }
+
+  /* ---------- 顶部信息 ---------- */
+  .top{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:25px; letter-spacing:.12em; color:#6B7386;
+  }
+  .tag{display:flex; align-items:center; gap:14px; color:#9AA2B4}
+  .tag i{width:9px;height:9px;border-radius:50%;background:#FFCF5C;box-shadow:0 0 14px rgba(255,207,92,.8)}
+  .meta{font-variant-numeric:tabular-nums}
+
+  /* ---------- 点阵 ---------- */
+  .grid{
+    margin:86px auto 0;
+    width:950px;
+    display:grid;
+    grid-template-columns:repeat(10,68px);
+    gap:30px;
+    transition:opacity .9s ease, filter .9s ease;
+  }
+  .dot{
+    width:68px; height:68px; border-radius:50%;
+    background:#1E222C;
+    box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.045);
+    opacity:0; transform:scale(.55);
+    transition:
+      opacity .5s ease,
+      transform .5s cubic-bezier(.2,1.35,.4,1),
+      background .32s ease,
+      box-shadow .45s ease;
+  }
+  .dot.in{opacity:1; transform:scale(1)}
+  .dot.lit{
+    background:radial-gradient(circle at 34% 28%, #FFEDB6 0%, #FFC93F 55%, #E5A218 100%);
+    box-shadow:
+      0 0 26px rgba(255,200,63,.62),
+      0 0 64px rgba(255,168,38,.22),
+      inset 0 0 0 1px rgba(255,255,255,.28);
+    transform:scale(1.13);
+  }
+
+  /* ---------- 数字面板 ---------- */
+  .stats{
+    margin-top:74px;
+    display:flex; align-items:flex-end; justify-content:center; gap:0;
+    transition:opacity .9s ease;
+  }
+  .stat{padding:0 62px; text-align:center}
+  .stat .v{
+    font-size:98px; font-weight:800; color:#F2F5FA;
+    font-variant-numeric:tabular-nums; letter-spacing:-.02em; line-height:1;
+  }
+  .stat .v span{display:inline-block}
+  .stat .v i{
+    font-style:normal; font-size:34px; font-weight:600; color:#5E6678;
+    margin-left:6px; letter-spacing:0;
+  }
+  .stat .k{
+    margin-top:20px; font-size:24px; letter-spacing:.16em; color:#6B7386;
+  }
+  .sep{width:1px; height:96px; background:linear-gradient(180deg,transparent,rgba(255,255,255,.14),transparent)}
+
+  /* ---------- 字幕轨（与动画同一个时钟） ---------- */
+  .subs{
+    position:absolute; left:78px; right:78px; bottom:168px; height:210px;
+  }
+  .cue{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    font-size:58px; font-weight:700; line-height:1.42; color:#E8ECF4;
+    letter-spacing:.01em;
+    opacity:0; will-change:opacity,transform;
+  }
+  .cue b{color:#FFCF5C; font-weight:800}
+
+  /* ---------- 结论 ---------- */
+  .conclusion{
+    position:absolute; left:70px; right:70px; bottom:235px;
+    text-align:center; opacity:0;
+    will-change:opacity,transform;
+  }
+  .conclusion .line{
+    font-size:74px; font-weight:800; line-height:1.34; color:#FFFFFF;
+    letter-spacing:.005em;
+  }
+  .conclusion .line b{color:#FFCF5C}
+  .conclusion .bar{
+    height:7px; width:0; margin:40px auto 0; border-radius:4px;
+    background:linear-gradient(90deg,#FFCF5C,#FF9F43);
+    box-shadow:0 0 24px rgba(255,180,60,.45);
+  }
+
+  /* 结论出现时，把背景内容压暗，视线全部交给那句话 */
+  .stage.done .grid{opacity:.26; filter:saturate(.5)}
+  .stage.done .stats{opacity:.18}
+
+  /* ---------- 画布外的操作提示，不会被录进 9:16 画面 ---------- */
+  .hint{
+    position:fixed; right:16px; bottom:12px;
+    font-size:12px; color:#3D4453; letter-spacing:.06em; user-select:none;
+  }
+  .hint.hide{display:none}
+
+  /* ?p 停帧截图时必须禁用过渡，否则截到的是渐变中间态 */
+  .stage.nofx *{transition:none!important}
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="top">
+    <div class="tag"><i></i>二八法则 · 客户贡献</div>
+    <div class="meta">100 位客户 · 全年 86 万元</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="v"><span id="cnum">0</span><i>/100</i></div>
+      <div class="k">客户已点亮</div>
+    </div>
+    <div class="sep"></div>
+    <div class="stat">
+      <div class="v"><span id="pnum">0</span><i>%</i></div>
+      <div class="k">订单金额占比</div>
+    </div>
+  </div>
+
+  <div class="subs" id="subs"></div>
+
+  <div class="conclusion" id="conclusion">
+    <div class="line">20 个客户<br>撑起 <b>80%</b> 的订单额</div>
+    <div class="bar" id="bar"></div>
+  </div>
+</div>
+
+<div class="hint" id="hint">空格 重播 &nbsp;·&nbsp; ← → 快退/快进 10 秒 &nbsp;·&nbsp; F 全屏 &nbsp;·&nbsp; H 隐藏本行</div>
+
+<script>
+/* =========================================================================
+   时间轴：所有时间单位是“秒”，从页面开始播放算起。
+   字幕和动画读的是同一个 t，所以永远不会错帧。
+   改内容只要动最上面的 CONFIG。
+   ========================================================================= */
+
+const CONFIG = {
+  total: 100,          // 点的总数
+  top: 20,             // 要点亮的个数
+  totalAmount: 86,     // 真实数据：全年订单额（万元）
+  topAmount: 68.8,     // 真实数据：前 20 名合计（万元）
+
+  dotInStart: 0.05,    // 点阵开始浮现
+  dotInStagger: 0.014, // 每个点之间错开多久
+  lightStart: 8.4,     // 开始逐个点亮
+  lightStep: 0.5,      // 每 0.5 秒亮一个
+  conclude: 18.8,      // 结论出现
+};
+
+/* 字幕稿：一句话一屏，时间是绝对秒数 [开始, 结束] */
+const CUES = [
+  [0.30,  3.30, '八成订单，来自<b>两成</b>客户'],
+  [3.50,  6.10, '100 个客户，撑起一整年'],
+  [6.30,  8.40, '但真正的大客户，只有 <b>20 个</b>'],
+  [8.60, 12.20, '它们，一个个亮起来'],
+  [12.40, 15.40, '每一个，都是 4% 的订单'],
+  /* 结论卡占据字幕位，最后一句要在它出现前说完，且不重复卡上的数字 */
+  [15.60, 18.40, '剩下的那些，不值得花力气'],
+];
+
+/* ---------------- 建点阵 ---------------- */
+const N = CONFIG.total;
+const grid = document.getElementById('grid');
+const stage = document.getElementById('stage');
+const subs = document.getElementById('subs');
+const cnum = document.getElementById('cnum');
+const pnum = document.getElementById('pnum');
+const conclusion = document.getElementById('conclusion');
+const bar = document.getElementById('bar');
+
+const dots = [];
+for (let i = 0; i < N; i++) {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  grid.appendChild(d);
+  dots.push(d);
+}
+
+/* 用固定种子把“大客户”散布到全部区域，避免挤在一角显得假 */
+function lcg(seed) {
+  let s = seed >>> 0;
+  return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+}
+const rnd = lcg(20261107);
+const order = [...Array(N).keys()];
+for (let i = N - 1; i > 0; i--) {
+  const j = Math.floor(rnd() * (i + 1));
+  [order[i], order[j]] = [order[j], order[i]];
+}
+const topOrder = order.slice(0, CONFIG.top);   // 点亮顺序
+
+/* 每个点该在第几秒亮 */
+const litAt = new Array(N).fill(Infinity);
+topOrder.forEach((idx, k) => { litAt[idx] = CONFIG.lightStart + k * CONFIG.lightStep; });
+
+/* ---------------- 中文字幕断行 ----------------
+   中文允许任意字间断行，会把“每一种书”拆成“每一种 / 书”。
+   这里改成：只在标点后断，断点尽量靠近视觉中点。 */
+const CUE_MAX = 16.0;               // 一行放得下的全角字数（932px / 56px ≈ 16.6）
+const BREAKS = '，、：。？！；';
+
+function textWidth(s){
+  let w = 0;
+  for (const ch of s) w += (ch.codePointAt(0) < 0x2E80 ? 0.55 : 1);
+  return w;
+}
+function insertAt(html, idx){
+  let pi = 0, i = 0;
+  while (i < html.length){
+    if (html[i] === '<'){ i = html.indexOf('>', i) + 1; continue; }
+    if (pi === idx) return html.slice(0, i) + '<br>' + html.slice(i);
+    pi++; i++;
+  }
+  return html;
+}
+function balanceCue(html){
+  if (html.includes('<br>')) return html;       // 手写换行优先
+  const plain = html.replace(/<[^>]+>/g, '');
+  if (textWidth(plain) <= CUE_MAX) return html;
+  const pts = [];
+  for (let i = 0; i < plain.length; i++){
+    if (BREAKS.includes(plain[i])) pts.push(i + 1);
+    else if (plain[i] === '—' && plain[i+1] === '—') pts.push(i + 2);
+  }
+  if (!pts.length) return html;                 // 无标点，交给浏览器
+  const target = textWidth(plain) / 2;
+  let best = pts[0], bestD = Infinity;
+  for (const p of pts){
+    const d = Math.abs(textWidth(plain.slice(0, p)) - target);
+    if (d < bestD){ bestD = d; best = p; }
+  }
+  return insertAt(html, best);
+}
+
+/* ---------------- 字幕 DOM ---------------- */
+const cueEls = CUES.map(([t0, t1, html]) => {
+  const el = document.createElement('div');
+  el.className = 'cue';
+  el.innerHTML = balanceCue(html);
+  subs.appendChild(el);
+  return { el, t0, t1 };
+});
+
+/* ---------------- 主时钟 ----------------
+   网址参数：?t=12 跳到第 12 秒；?t=12&p 停在该帧（截图用）；?clean 隐藏提示 */
+const revealed = new Array(N).fill(false);
+
+const QS = new URLSearchParams(location.search);
+const T0 = parseFloat(QS.get('t') || '0') || 0;
+const PAUSED = QS.has('p');
+if (PAUSED) stage.classList.add('nofx');
+
+let base = performance.now() / 1000 - T0;
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+function render(t) {
+  /* 1. 点阵浮现 */
+  for (let i = 0; i < N; i++) {
+    if (!revealed[i] && t >= CONFIG.dotInStart + i * CONFIG.dotInStagger) {
+      revealed[i] = true;
+      dots[i].classList.add('in');
+    }
+  }
+
+  /* 2. 逐个点亮 */
+  let count = 0;
+  if (t >= CONFIG.lightStart) {
+    count = Math.min(CONFIG.top,
+      Math.floor((t - CONFIG.lightStart) / CONFIG.lightStep) + 1);
+  }
+  for (let i = 0; i < N; i++) {
+    if (litAt[i] <= t && !dots[i].classList.contains('lit')) {
+      dots[i].classList.add('lit');
+    }
+  }
+
+  /* 3. 计数与占比：点亮数 / 20 * 80%，每个点正好 4% */
+  const percent = count / CONFIG.top * 80;
+  cnum.textContent = count;
+  pnum.textContent = Math.round(percent);
+
+  /* 4. 字幕：按绝对时间淡入淡出 */
+  const FI = 0.34, FO = 0.28;
+  for (const c of cueEls) {
+    let o = 0;
+    if (t >= c.t0 && t <= c.t1) {
+      o = Math.min(1, (t - c.t0) / FI, (c.t1 - t) / FO);
+      o = clamp(o, 0, 1);
+    }
+    c.el.style.opacity = o;
+    c.el.style.transform = `translateY(${(1 - o) * 16}px)`;
+  }
+
+  /* 5. 结论 */
+  const co = clamp((t - CONFIG.conclude) / 0.75, 0, 1);
+  conclusion.style.opacity = co;
+  conclusion.style.transform = `translateY(${(1 - co) * 24}px) scale(${0.97 + 0.03 * co})`;
+  bar.style.width = clamp((t - CONFIG.conclude - 0.25) / 1.15, 0, 1) * 260 + 'px';
+
+  /* 6. 进入结论状态：压暗点阵 */
+  stage.classList.toggle('done', t >= CONFIG.conclude);
+}
+
+function frame(now) {
+  render(now / 1000 - base);
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- 重播 ---------------- */
+function reset() {
+  base = performance.now() / 1000;
+  for (let i = 0; i < N; i++) {
+    revealed[i] = false;
+    dots[i].classList.remove('in', 'lit');
+  }
+  stage.classList.remove('done');
+  conclusion.style.opacity = 0;
+  bar.style.width = '0px';
+  cueEls.forEach(c => { c.el.style.opacity = 0; });
+}
+
+const hintEl = document.getElementById('hint');
+if (QS.has('clean')) hintEl.classList.add('hide');
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); reset(); }
+  else if (e.code === 'ArrowRight') { e.preventDefault(); base -= 10; }
+  else if (e.code === 'ArrowLeft') { e.preventDefault(); base += 10; }
+  else if (e.code === 'KeyH') { hintEl.classList.toggle('hide'); }
+  else if (e.code === 'KeyF') {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }
+});
+document.addEventListener('click', reset);
+
+/* ---------------- 自适应缩放 ---------------- */
+function fit() {
+  const s = Math.min(window.innerWidth / 1080, window.innerHeight / 1920);
+  document.documentElement.style.setProperty('--s', s);
+}
+window.addEventListener('resize', fit);
+fit();
+
+if (PAUSED) { render(T0); } else { requestAnimationFrame(frame); }
+</script>
+</body>
+</html>

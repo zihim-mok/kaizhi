@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>长版模板 · 多场景叙事</title>
+<style>
+/* =========================================================================
+   长版模板 · 骨架说明
+   -------------------------------------------------------------------------
+   这个文件是一个 2 分钟的「可运行骨架」，不是成品。它演示四件事：
+     1. 多场景怎么排（SCENES）
+     2. 字幕怎么和场景对齐（CUES）
+     3. 数据怎么变成视觉（点阵 / 条形）
+     4. 白描插图怎么一笔一笔画出来（svg.ink）
+
+   做 5–8 分钟的片子：按同样的结构复制 <section class="scene">，
+   每个场景 30–60 秒，扩到 6–10 个即可。渲染逻辑一行都不用改。
+
+   改内容只动三处：CONFIG / SCENES / CUES，以及各场景里的 HTML。
+   ========================================================================= */
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#06070B}
+body{
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- 9:16 画布 ---------- */
+.stage{
+  position:absolute; left:50%; top:50%;
+  width:1080px; height:1920px;
+  transform:translate(-50%,-50%) scale(var(--s,1));
+  transform-origin:center center;
+  overflow:hidden;
+  background:radial-gradient(120% 70% at 50% -10%, #161B26 0%, #0B0E14 52%, #06070B 100%);
+}
+.stage::before{
+  content:""; position:absolute; left:0; right:0; top:0; height:2px;
+  background:linear-gradient(90deg,transparent,rgba(201,151,58,.35),transparent);
+}
+/* ?p 停帧截图时禁用过渡，否则截到的是渐变中间态 */
+.stage.nofx *{transition:none!important}
+
+/* ---------- 场景：必须垂直居中，底部留给字幕 ---------- */
+.scene{
+  position:absolute; inset:0; z-index:10;
+  padding:86px 84px 340px;
+  display:flex; flex-direction:column;
+  justify-content:center;
+  opacity:0; pointer-events:none;
+  transition:opacity .55s ease;
+}
+.scene.on{opacity:1}
+
+.hd{
+  display:flex; align-items:baseline; gap:18px; flex:none;
+  font-size:23px; letter-spacing:.2em; color:#5C6473; margin-bottom:44px;
+}
+.hd .ch{color:#C9973A; font-variant-numeric:tabular-nums}
+
+/* ---------- S0 钩子 ---------- */
+.hook{text-align:left}
+.hook p{font-size:56px; line-height:1.5; color:#8A8578; letter-spacing:.04em}
+.hook p.big{
+  font-size:82px; font-weight:700; color:#F2ECDF;
+  line-height:1.4; margin-top:44px; letter-spacing:.01em;
+}
+.hook b{color:#F0C568}
+
+/* ---------- S1 点阵 ---------- */
+.wall{
+  margin:0 auto; width:100%;
+  display:grid; grid-template-columns:repeat(20,1fr); gap:4px;
+}
+.bk{
+  height:42px; border-radius:2px;
+  background:rgba(201,151,58,.55);
+  box-shadow:inset 0 0 0 1px rgba(240,197,104,.18);
+  transition:background .4s ease, box-shadow .4s ease, transform .4s ease;
+}
+.bk.dead{
+  background:rgba(120,72,48,.10);
+  box-shadow:inset 0 0 0 1.5px rgba(158,96,64,.75);
+  transform:scale(.82);
+}
+.bk.keep{
+  background:#F0C568;
+  box-shadow:0 0 18px rgba(240,197,104,.75);
+}
+.counter{
+  margin-top:52px; display:flex; justify-content:center; gap:0;
+}
+.counter .c{padding:0 56px; text-align:center}
+.counter .v{
+  font-size:88px; font-weight:800; color:#F2F5FA;
+  font-variant-numeric:tabular-nums; line-height:1;
+}
+.counter .v i{font-style:normal; font-size:30px; color:#5E6678; margin-left:6px}
+.counter .k{margin-top:16px; font-size:22px; letter-spacing:.16em; color:#6B7386}
+.counter .sep{width:1px; background:linear-gradient(180deg,transparent,rgba(255,255,255,.14),transparent)}
+
+/* ---------- S2 条形 ---------- */
+.bars{width:100%}
+.brow{margin-bottom:56px; opacity:0}
+.brow .bh{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:30px; color:#9A937F; margin-bottom:18px;
+}
+.brow .bv{font-size:28px; color:#C9C2B0; font-variant-numeric:tabular-nums}
+.brow .track{
+  height:38px; border-radius:3px; background:rgba(255,255,255,.045);
+}
+.brow .bar{
+  height:38px; border-radius:3px; width:0;
+  background:linear-gradient(90deg,#8A6B2E,#C9973A);
+}
+.brow.hi .bar{
+  background:linear-gradient(90deg,#C9973A,#F0C568);
+  box-shadow:0 0 26px rgba(240,197,104,.35);
+}
+.brow.hi .bv{color:#F0C568}
+.note{
+  margin-top:44px; font-size:38px; line-height:1.6; color:#A9A292;
+  border-top:1px solid #23262F; padding-top:36px; opacity:0;
+}
+.note b{color:#F0C568}
+
+/* ---------- S3 结论 ---------- */
+.end{text-align:center}
+.end .e2{
+  margin-top:36px; font-size:72px; font-weight:700; line-height:1.42;
+  color:#F2ECDF; opacity:0;
+}
+.end .e2 b{color:#F0C568}
+.end .rule{
+  height:5px; width:0; margin:44px auto 0; border-radius:3px;
+  background:linear-gradient(90deg,#C9973A,#F0C568);
+}
+
+/* ---------- 白描插图：细金线，描线动画 ---------- */
+.ink{
+  fill:none; stroke:currentColor; stroke-width:2.6;
+  stroke-linecap:round; stroke-linejoin:round; display:block;
+}
+.ink *{fill:none; stroke:inherit}
+.art-end{
+  width:340px; margin:0 auto 8px; color:#D8A64C; opacity:.85;
+}
+
+/* ---------- 字幕轨 ---------- */
+.subs{
+  position:absolute; left:78px; right:78px; bottom:104px; height:196px; z-index:50;
+}
+.cue{
+  position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  text-align:center;
+  font-size:56px; font-weight:600; line-height:1.5; color:#F2ECDF;
+  letter-spacing:.01em; opacity:0;
+  text-shadow:0 2px 24px rgba(0,0,0,.9);
+  text-wrap:balance;
+}
+
+/* ---------- 画布外的操作提示 ---------- */
+.hint{
+  position:fixed; right:14px; bottom:10px; z-index:99;
+  font-size:11px; color:#333945; letter-spacing:.05em; user-select:none;
+}
+.hint.hide{display:none}
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- ============ S0 钩子：不放字幕，画面自己说 ============ -->
+  <section class="scene" data-s="0">
+    <div class="hook">
+      <p>你常去的那家书店，<br>可能已经在一份名单上了。</p>
+      <p class="big" id="hk2">而这份名单，<br>记着它<b>曾经存在</b>。</p>
+    </div>
+  </section>
+
+  <!-- ============ S1 点阵：把比例变成视觉冲击 ============ -->
+  <section class="scene" data-s="1">
+    <div class="hd"><span class="ch">01</span><span>每三家，关掉两家</span></div>
+    <div class="wall" id="wall"></div>
+    <div class="counter" id="ctr">
+      <div class="c">
+        <div class="v"><span id="cnum">0</span><i>/300</i></div>
+        <div class="k">还在营业</div>
+      </div>
+      <div class="sep" style="height:88px"></div>
+      <div class="c">
+        <div class="v"><span id="pnum">100</span><i>%</i></div>
+        <div class="k">占原有比例</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ S2 条形：两个数字的差距 ============ -->
+  <section class="scene" data-s="2">
+    <div class="hd"><span class="ch">02</span><span>七十年，300 变成 100</span></div>
+    <div class="bars">
+      <div class="brow hi" id="b1">
+        <div class="bh"><span>1950 年</span><span class="bv">300 家</span></div>
+        <div class="track"><div class="bar" id="bar1"></div></div>
+      </div>
+      <div class="brow" id="b2">
+        <div class="bh"><span>2020 年</span><span class="bv">100 家</span></div>
+        <div class="track"><div class="bar" id="bar2"></div></div>
+      </div>
+    </div>
+    <div class="note" id="note1">
+      注：家数取自该市工商登记，<br>含连锁门店，不含无照摊点。
+    </div>
+  </section>
+
+  <!-- ============ S3 结论 ============ -->
+  <section class="scene" data-s="3">
+    <div class="end">
+      <!-- 白描：一摞书。data-at 是开始时间，dur 单笔时长，stagger 笔间间隔 -->
+      <svg class="ink art-end" data-at="86.6" data-dur="1.1" data-stagger="0.05"
+           viewBox="0 0 200 120" aria-hidden="true">
+        <path d="M40 34 H 160"/>
+        <path d="M40 34 V 62"/><path d="M160 34 V 62"/>
+        <path d="M30 62 H 170"/>
+        <path d="M30 62 V 92"/><path d="M170 62 V 92"/>
+        <path d="M22 92 H 178"/>
+        <path d="M22 92 V 108"/><path d="M178 92 V 108"/>
+        <path d="M22 108 H 178"/>
+        <path d="M50 48 H 150"/>
+        <path d="M40 77 H 160"/>
+        <path d="M112 62 q7 11 0 22"/>
+      </svg>
+      <div class="e2" id="e2">它们不是消失了<br>只是不再被<b>数进去</b></div>
+      <div class="rule" id="rule"></div>
+    </div>
+  </section>
+
+  <!-- ============ 字幕轨：由 CUES 生成，和动画同一个 t ============ -->
+  <div class="subs" id="subs"></div>
+</div>
+
+<div class="hint" id="hint">空格 重播 · ← → 快退/快进 10 秒 · F 全屏 · H 隐藏本行</div>
+
+<script>
+/* =========================================================================
+   1. 全局参数
+   ========================================================================= */
+const TOTAL = 120;
+
+/* =========================================================================
+   2. 场景表：首尾必须相接，最后一场 t1 === TOTAL
+   ========================================================================= */
+const SCENES = [
+  { s: 0, t0: 0,   t1: 6   },   // 钩子，无字幕
+  { s: 1, t0: 6,   t1: 46  },   // 点阵：300 格熄到 100 格
+  { s: 2, t0: 46,  t1: 86  },   // 条形：1200 vs 400
+  { s: 3, t0: 86,  t1: 120 },   // 结论
+];
+
+/* =========================================================================
+   3. 字幕稿：绝对秒数，一句话一屏，8–16 全角字
+      字幕说白话，画面文字说结论，两者不允许是同一句
+   ========================================================================= */
+const CUES = [
+  /* S0 无字幕：画面大字自己说，留白 */
+  /* S1 */
+  [6.40,  10.60, '这座城市的书店，曾经有 300 家'],
+  [10.80, 15.00, '现在剩下 100 家'],
+  [15.20, 19.40, '三分之二，都关掉了'],
+  [19.60, 24.20, '关掉的不会一起消失'],
+  [24.40, 28.60, '它们是零零散散的，一年几家'],
+  [28.80, 33.40, '所以没有人觉得，这是件大事'],
+  [33.60, 38.20, '直到有一天，你走的那条路上'],
+  [38.40, 45.40, '一家都没有了'],
+  /* S2 */
+  [46.40, 50.80, '这是七十年前的家底'],
+  [51.00, 55.40, '这是现在剩下的'],
+  [55.60, 60.20, '走掉的，比留下的多一倍'],
+  [60.40, 65.20, '可这个消失，不是匀速的'],
+  [65.40, 70.20, '真正快的是最近这二十年'],
+  [70.40, 75.20, '电商、房租、阅读习惯'],
+  [75.40, 80.20, '三个原因叠在一起'],
+  [80.40, 85.40, '谁也说不清该怪哪一个'],
+  /* S3 */
+  [86.40, 92.20, '一家书店关门，不会上新闻'],
+  [92.40, 98.20, '一千家加起来，才是一件事'],
+  [98.40, 104.20, '消失的不只是店'],
+  [104.40, 111.20, '还有走过去的那段路'],
+  [111.40, 116.60, '和路上遇到的人'],
+  /* 116.6 之后留白收尾 */
+];
+
+/* =========================================================================
+   4. 工具
+   ========================================================================= */
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => v < a ? a : v > b ? b : v;
+const pr = (t,a,b) => clamp((t-a)/(b-a), 0, 1);   // 区间进度 0→1
+const easeOut = x => 1 - Math.pow(1-x, 3);
+const fmt = n => n.toLocaleString('en-US');
+
+/* 只在值变化时写 DOM，避免每帧重排 */
+function set(id, prop, val){
+  const el = $(id);
+  if (!el) return;
+  if (el.__k !== val){ el.__k = val; el.style[prop] = val; }
+}
+function fade(id, v){
+  const el = $(id);
+  if (!el) return;
+  if (el.__o !== v){ el.__o = v; el.style.opacity = v; }
+}
+
+/* =========================================================================
+   5. 数据 → 视觉
+   ------------------------------------------------------------------------
+   真数据（换成你自己的）：1950 年 300 家，2020 年 100 家。
+   格子数 = 家数，1:1，观众不用换算 —— 数据规模不同时按比例缩放，
+   但要在画面某个角落注明“每格代表 N 家”。
+   条形宽度必须按比例算，不能手写数值。
+   ========================================================================= */
+const DATA = { y1950: 300, y2020: 100 };
+const WALL_N = 300;                                        // 格子数 = 1950 年的家数
+const KEEP = Math.round(WALL_N * DATA.y2020 / DATA.y1950); // 100/300 → 100
+const TRACK = 912;                                    // 条形轨道宽 = 版心宽
+
+/* 固定种子的伪随机，保证每次刷新熄灭顺序一致（可寻址的前提） */
+function lcg(seed){ let s = seed >>> 0; return () => (s = (s*1664525+1013904223) >>> 0) / 4294967296; }
+const rnd = lcg(20261107);
+
+const wall = $('wall');
+const books = [];
+for (let i = 0; i < WALL_N; i++){
+  const d = document.createElement('div');
+  d.className = 'bk';
+  wall.appendChild(d);
+  books.push(d);
+}
+
+/* 打乱顺序，决定谁先熄灭、谁最后幸存 */
+const perm = [...Array(WALL_N).keys()];
+for (let i = WALL_N - 1; i > 0; i--){
+  const j = Math.floor(rnd() * (i + 1));
+  [perm[i], perm[j]] = [perm[j], perm[i]];
+}
+const keepSet = new Set(perm.slice(0, KEEP));       // 幸存的 100 个
+const killOrder = perm.slice(KEEP);                  // 熄灭的 200 个
+
+/* 每个格子的熄灭时间：14 秒开始，到 40 秒熄完 */
+const KILL_START = 14, KILL_END = 40;
+const killAt = new Array(WALL_N).fill(Infinity);
+killOrder.forEach((idx, k) => {
+  killAt[idx] = KILL_START + (KILL_END - KILL_START) * (k / killOrder.length);
+});
+
+/* =========================================================================
+   6. 中文字幕断行
+   ------------------------------------------------------------------------
+   中文允许任意字间断行，会把“每一种书”拆成“每一种 / 书”。
+   这里改成：只在标点后断，断点尽量靠近视觉中点。
+   ========================================================================= */
+const CUE_MAX = 16.0;          // 一行放得下的全角字数（912px / 56px ≈ 16.3）
+const BREAKS = '，、：。？！；';
+
+function textWidth(s){
+  let w = 0;
+  for (const ch of s) w += (ch.codePointAt(0) < 0x2E80 ? 0.55 : 1);
+  return w;
+}
+function insertAt(html, idx){
+  let pi = 0, i = 0;
+  while (i < html.length){
+    if (html[i] === '<'){ i = html.indexOf('>', i) + 1; continue; }
+    if (pi === idx) return html.slice(0, i) + '<br>' + html.slice(i);
+    pi++; i++;
+  }
+  return html;
+}
+function balanceCue(html){
+  if (html.includes('<br>')) return html;       // 手写换行优先
+  const plain = html.replace(/<[^>]+>/g, '');
+  if (textWidth(plain) <= CUE_MAX) return html;
+  const pts = [];
+  for (let i = 0; i < plain.length; i++){
+    if (BREAKS.includes(plain[i])) pts.push(i + 1);
+    else if (plain[i] === '—' && plain[i+1] === '—') pts.push(i + 2);
+  }
+  if (!pts.length) return html;                 // 无标点，交给浏览器
+  const target = textWidth(plain) / 2;
+  let best = pts[0], bestD = Infinity;
+  for (const p of pts){
+    const d = Math.abs(textWidth(plain.slice(0, p)) - target);
+    if (d < bestD){ bestD = d; best = p; }
+  }
+  return insertAt(html, best);
+}
+
+/* =========================================================================
+   7. 构建字幕
+   ========================================================================= */
+const subs = $('subs');
+const cueEls = CUES.map(([a,b,html]) => {
+  const el = document.createElement('div');
+  el.className = 'cue';
+  el.innerHTML = balanceCue(html);
+  subs.appendChild(el);
+  return { el, a, b };
+});
+
+/* =========================================================================
+   8. 白描描线
+   ------------------------------------------------------------------------
+   每条线按自身长度做 dash 动画，一笔一笔长出来，而不是整幅图一起淡入。
+   仍由同一个 t 驱动，所以 ?t= 跳到哪一帧就是哪一帧的线。
+   ========================================================================= */
+const SEL = 'path,circle,ellipse,rect,line,polyline';
+const INKS = [];
+document.querySelectorAll('svg.ink').forEach(svg => {
+  [...svg.querySelectorAll(SEL)].forEach((p, i) => {
+    let L = 0;
+    try { L = p.getTotalLength(); } catch(e) {}
+    if (!L) L = 100;
+    p.style.strokeDasharray = L + ' ' + (L + 4);
+    p.style.strokeDashoffset = L;
+    INKS.push({ p, L, i, svg });
+  });
+});
+
+function drawInk(t){
+  for (const it of INKS){
+    const at = +(it.svg.dataset.at || 0);
+    const dur = +(it.svg.dataset.dur || 1.2);
+    const stg = +(it.svg.dataset.stagger || 0.06);
+    const a = at + it.i * stg;
+    const d = ((1 - pr(t, a, a + dur)) * it.L).toFixed(1);
+    if (it.p.__d !== d){ it.p.__d = d; it.p.style.strokeDashoffset = d; }
+  }
+}
+
+/* =========================================================================
+   9. 渲染
+   ------------------------------------------------------------------------
+   关键：render(t) 必须是纯函数 —— 同一个 t 渲染出同一个画面。
+   每一帧都从 t 直接算出状态，不累积、不依赖上一帧。
+   ========================================================================= */
+let curScene = -1;
+
+function render(t){
+  /* ---- 场景切换：只在变化时切 class ---- */
+  let si = 0;
+  for (let i = 0; i < SCENES.length; i++){
+    if (t >= SCENES[i].t0) si = i;
+  }
+  if (si !== curScene){
+    curScene = si;
+    document.querySelectorAll('.scene').forEach(el => {
+      el.classList.toggle('on', +el.dataset.s === SCENES[si].s);
+    });
+  }
+
+  /* ---- S0 钩子：第二段大字延迟出现 ---- */
+  fade('hk2', pr(t, 2.2, 3.8));
+
+  /* ---- S1 点阵：每格的状态都由 t 直接算出 ---- */
+  let alive = WALL_N;
+  for (let i = 0; i < WALL_N; i++){
+    const dead = t >= killAt[i];
+    books[i].classList.toggle('dead', dead);
+    books[i].classList.toggle('keep', !dead && keepSet.has(i) && t >= KILL_END * 0.94);
+    if (dead) alive--;
+  }
+  $('cnum').textContent = alive;
+  $('pnum').textContent = Math.round(alive / WALL_N * 100);
+
+  /* 最后一句“一家都没有了”是全片情绪落点：把数字压暗，让它一个人站着。
+     数字不能删——删了观众就不知道少了多少；压到 28% 留作背景。 */
+  fade('ctr', 1 - 0.72 * pr(t, 38.0, 39.8));
+
+  /* ---- S2 条形：宽度按数据比例算 ---- */
+  const max = Math.max(DATA.y1950, DATA.y2020);
+  fade('b1', pr(t, 47.0, 48.0));
+  fade('b2', pr(t, 51.6, 52.6));
+  set('bar1', 'width', (easeOut(pr(t, 47.6, 51.0)) * (DATA.y1950 / max * TRACK)).toFixed(1) + 'px');
+  set('bar2', 'width', (easeOut(pr(t, 52.2, 55.6)) * (DATA.y2020 / max * TRACK)).toFixed(1) + 'px');
+  fade('note1', pr(t, 60.4, 61.8));
+
+  /* ---- S3 结论 ---- */
+  fade('e2', pr(t, 91.0, 93.0));
+  set('rule', 'width', (easeOut(pr(t, 98.4, 100.6)) * 320).toFixed(1) + 'px');
+
+  /* ---- 描线插图 ---- */
+  drawInk(t);
+
+  /* ---- 字幕：按绝对时间淡入淡出，和动画读同一个 t ---- */
+  const FI = 0.34, FO = 0.28;
+  for (const c of cueEls){
+    let o = 0;
+    if (t >= c.a && t <= c.b){
+      o = Math.min(1, (t - c.a) / FI, (c.b - t) / FO);
+      o = clamp(o, 0, 1);
+    }
+    if (c.el.__o !== o){
+      c.el.__o = o;
+      c.el.style.opacity = o;
+      c.el.style.transform = 'translateY(' + ((1 - o) * 16).toFixed(1) + 'px)';
+    }
+  }
+}
+
+/* =========================================================================
+   10. 时钟
+   ------------------------------------------------------------------------
+   网址参数：?t=30 从第 30 秒开始；?t=30&p 停在那一帧；?clean 隐藏提示
+   ========================================================================= */
+const QS = new URLSearchParams(location.search);
+const T0 = parseFloat(QS.get('t') || '0') || 0;
+const PAUSED = QS.has('p');
+if (PAUSED) $('stage').classList.add('nofx');
+
+let base = performance.now() / 1000 - T0;
+function frame(now){
+  render(now / 1000 - base);
+  requestAnimationFrame(frame);
+}
+
+/* =========================================================================
+   11. 交互
+   ========================================================================= */
+function replay(){ base = performance.now() / 1000; curScene = -1; }
+
+const hintEl = $('hint');
+if (QS.has('clean')) hintEl.classList.add('hide');
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space'){ e.preventDefault(); replay(); }
+  else if (e.code === 'ArrowRight'){ e.preventDefault(); base -= 10; curScene = -1; }
+  else if (e.code === 'ArrowLeft'){ e.preventDefault(); base += 10; curScene = -1; }
+  else if (e.code === 'KeyH'){ hintEl.classList.toggle('hide'); }
+  else if (e.code === 'KeyF'){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen();
+  }
+});
+document.addEventListener('click', replay);
+
+/* =========================================================================
+   12. 自适应
+   ========================================================================= */
+function fit(){
+  const s = Math.min(innerWidth / 1080, innerHeight / 1920);
+  document.documentElement.style.setProperty('--s', s);
+}
+addEventListener('resize', fit);
+fit();
+
+if (PAUSED) { render(T0); } else { requestAnimationFrame(frame); }
+</script>
+</body>
+</html>

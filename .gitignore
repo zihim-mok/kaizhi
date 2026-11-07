@@ -1,0 +1,17 @@
+# 逐帧截图产物（体积大，可随时重建）
+snap/
+snap_*/
+shots/
+_v/
+snap_tmp/
+
+# 临时检查文件
+_chk.js
+_dup_test.html
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+.vscode/
+node_modules/
+*.log
