@@ -48,6 +48,8 @@ start templates\short-60s.html       # Windows
 
 真实成品见 [`examples/`](examples/)：一个 24 秒短版（二八法则），一个 6 分 36 秒长版（目录学史）。
 
+长版成品视频：[`目录学示例.mp4`](examples/目录学示例.mp4)（66 MB，直接看效果，不用先跑代码）。
+
 ## 五条铁律
 
 这五条是这套东西成立的全部。违反任何一条，成品就会立刻降级成屏保。
@@ -86,6 +88,7 @@ examples/
   01-pareto-dots.html 短版实例
   02-muluxue.html     长版实例
   02-muluxue.srt      与时间轴严格对齐的字幕稿
+  目录学示例.mp4       长版成品视频
 ```
 
 ## 两个版本，区别不在时长
