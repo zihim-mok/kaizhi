@@ -126,4 +126,4 @@ node tools/export-cues.mjs examples/02-muluxue.html        # 出 srt + txt
 
 ## 许可
 
-MIT。拿去改，改了不用署名，但如果你做出好东西，欢迎提 PR 把案例加进 `examples/`。祝大家vibe video顺利！！1 : )
+MIT。欢迎提 PR 把案例加进 `examples/`。祝大家vibe video顺利！！1 : )
